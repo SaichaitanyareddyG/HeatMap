@@ -3,10 +3,13 @@ import { calculateWorkExperience } from './utils';
 import { Heatmap } from './heatMap';
 import { IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AddIconCricle from '@mui/icons-material/AddCircle';
+
 import RemoveIcon from '@mui/icons-material/Remove';
 
 export const UserList = () => {
   const [users, setUsers] = useState([]);
+  const [recommendedUsers, setRecommendedUsers] = useState([]); // For recommended users
   const [selectedUsers, setSelectedUsers] = useState([]); // Selected user IDs
   const [selectedUserDetails, setSelectedUserDetails] = useState([]); // Detailed user data
   const [error, setError] = useState(null);
@@ -23,6 +26,8 @@ export const UserList = () => {
         }
         const data = await response.json();
         setUsers(data); // Store the list of users
+
+        setRecommendedUsers(data.slice(0, 4)); 
       } catch (error) {
         setError('Error fetching users');
       }
@@ -88,6 +93,7 @@ export const UserList = () => {
     return selectedUserDetails.map((user) => {
       const skillset = user.data?.data?.data?.skillset; // Safely access skillset
       console;
+
       // Calculate experience using the calculateWorkExperience function
       const experience = calculateWorkExperience(
         user.data?.data?.user_data?.user?.workEx || 0
@@ -122,31 +128,54 @@ export const UserList = () => {
           width: '250px',
           borderRight: '1px solid #ccc',
           padding: '10px',
+            border: '1px solid'
         }}
       >
-        <h1>User List</h1>
         {error && <p>{error}</p>}
-        <ul style={{ listStyleType: 'none', padding: 0 }}>
-          {users.map((user) => (
-            <li
-              key={user.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '5px',
-              }}
-            >
-              <span>{user.name}</span>
-              <IconButton onClick={() => handleUserSelect(user)}>
-                {selectedUsers.some((selected) => selected.id === user.id) ? (
-                  <RemoveIcon color="error" />
-                ) : (
-                  <AddIcon />
-                )}
-              </IconButton>
-            </li>
-          ))}
-        </ul>
+
+        {/* Recommended Users Section */}
+        <div style={{ backgroundColor: '#F6F6EF', padding: '10px', marginBottom: '20px', borderRadius: '5px',
+        
+         }}>
+          <h2>Most Recommended</h2>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {recommendedUsers.map((user) => (
+              <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
+                <span>{user.name}</span>
+                <IconButton onClick={() => handleUserSelect(user)}>
+                  {selectedUsers.some((selected) => selected.id === user.id) ? (
+                    <RemoveIcon color="error" />
+                  ) : (
+                    <AddIconCricle style={{
+                      color: '#C3BBFF'
+                    }} />
+                  )}
+                </IconButton>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            Recommendations are based on your skill requirements and candidate's performance.
+          </p>
+        </div>
+
+        {/* All Users Section */}
+        <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+            {users.map((user) => (
+              <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
+                <span>{user.name}</span>
+                <IconButton onClick={() => handleUserSelect(user)}>
+                  {selectedUsers.some((selected) => selected.id === user.id) ? (
+                    <RemoveIcon color="error" />
+                  ) : (
+                    <AddIconCricle style={{
+                      color: '#C3BBFF'
+                    }} />
+                  )}
+                </IconButton>
+              </div>
+            ))}
+          </div>
       </div>
 
       <div style={{ flexGrow: 1, padding: '10px' }}>

@@ -1,64 +1,87 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
 export const Heatmap = ({ data }) => {
   const svgRef = useRef();
+  const [startIndex, setStartIndex] = useState(0);
+  const numColumns = 10; // Number of user columns to display at a time
+
+  // Function to navigate left
+  const handleLeftClick = () => {
+    setStartIndex((prev) => Math.max(prev - numColumns, 0));
+  };
+
+  // Function to navigate right
+  const handleRightClick = () => {
+    setStartIndex((prev) =>
+      Math.min(prev + numColumns, data.length - numColumns)
+    );
+  };
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove(); // Clear previous drawings
 
-    const margin = { top: 30, right: 30, bottom: 40, left: 130 }; // Adjusted left margin for space between labels
+    const margin = { top: 50, right: 30, bottom: 40, left: 200 }; // Adjust left margin
     const width = 800 - margin.left - margin.right;
-    const height = 500 - margin.top - margin.bottom; // Adjusted height for better spacing
+    const height = 500 - margin.top - margin.bottom;
+
+    const displayedData = data.slice(startIndex, startIndex + numColumns); // Display only a portion of data
 
     const x = d3
       .scaleBand()
-      .domain(data.map((d) => d.id)) // User IDs
+      .domain(displayedData.map((d) => d.id)) // User IDs
       .range([0, width])
-      .padding(0.1); // Added padding between blocks
+      .padding(0.1); // Padding between blocks
 
     const y = d3
       .scaleBand()
-      .domain(['Dummy', 'Experience', ...Object.keys(data[0].skills)]) // Added "Dummy" above "Experience"
+      .domain(['Experience', ...Object.keys(displayedData[0].skills)]) // Skills
       .range([0, height])
-      .padding(0.3); // Add more padding between rows
+      .padding(0.3); // Padding between rows
 
-    // Define the skill color scale with updated colors
+    // Define color scales
     const skillColorScale = d3
       .scaleOrdinal()
       .domain([0, 1, 2, 3, 4])
-      .range(['#FFFFFF', '#F8F8A7', '#a6d96a', '#1A9641', '#003F0B']); // White, Light Yellow, Light Green, Dark Green, Very Dark Green
+      .range(['#FFFFFF', '#F8F8A7', '#a6d96a', '#1A9641', '#003F0B']); // Skill colors
 
-    // Define the experience color
-    const experienceColor = '#E7F3EC'; // Light blue-green for experience
-
-    // Define the radio button color
-    const radioColor = '#D9D9D9'; // Light gray color for radio buttons
+    const experienceColor = '#E7F3EC'; // Experience color
+    const radioColor = '#D9D9D9'; // Radio button color
 
     const g = svg
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Create heatmap cells for each user (including experience)
+    // Create heatmap cells for each user
     g.selectAll('.user')
-      .data(data)
+      .data(displayedData)
       .enter()
       .append('g')
       .attr('transform', (d) => `translate(${x(d.id)}, 0)`) // Move group according to user id
       .each(function (userData) {
         const userGroup = d3.select(this);
 
-        // Create dummy radio-button-like row
+        // Create dummy radio-button-like row without any label
         userGroup
           .append('circle')
           .attr('class', 'dummy-circle')
           .attr('cx', x.bandwidth() / 2) // Center the circle horizontally
-          .attr('cy', y('Dummy') + y.bandwidth() / 2) // Center the circle vertically
+          .attr('cy', -20) // Adjust the circle to be above the cells
           .attr('r', 10) // Increased circle size
           .attr('fill', radioColor) // Gray color for dummy buttons
           .attr('stroke', '#000') // Border for dummy circles
           .attr('stroke-width', 1);
+
+        // Add "A.B" text above the radio button
+        userGroup
+          .append('text')
+          .attr('x', x.bandwidth() / 2) // Center the text horizontally
+          .attr('y', -30) // Position the text above the radio button
+          .attr('text-anchor', 'middle')
+          .style('font-size', '10px') // Set font size
+          .style('fill', '#000') // Text color
+          .text('A.B'); // Example text
 
         // Create experience cell
         userGroup
@@ -73,6 +96,17 @@ export const Heatmap = ({ data }) => {
           .attr('stroke-width', 1)
           .append('title') // Tooltip for experience
           .text(`Experience: ${userData.experience} years`);
+
+        // Add text for experience value
+        userGroup
+          .append('text')
+          .attr('x', x.bandwidth() / 2) // Center text horizontally
+          .attr('y', y('Experience') + y.bandwidth() / 2) // Center text vertically
+          .attr('dy', '0.35em') // Vertically center the text
+          .attr('text-anchor', 'middle') // Center the text
+          .style('font-size', '10px') // Increased text size for better visibility
+          .style('fill', '#000') // Text color
+          .text(userData.experience); // Display experience number
 
         // Create skill cells
         userGroup
@@ -92,7 +126,7 @@ export const Heatmap = ({ data }) => {
           .text((d) => `${d[0]}: ${d[1]}`);
       });
 
-    // Create bold Y-axis labels with space
+    // Create bold Y-axis labels with enough space for long text
     g.append('g')
       .call(d3.axisLeft(y).tickSize(0)) // Remove tick lines on Y-axis
       .call(
@@ -100,9 +134,9 @@ export const Heatmap = ({ data }) => {
           g
             .selectAll('text')
             .style('font-weight', 'bold') // Bold labels
-            .style('font-size', '14px') // Fix label size
-            .style('text-anchor', 'end') // Align labels to the end (right)
-            .attr('x', -10) // Add space between labels and blocks
+            .style('font-size', '12px') // Increased label size
+            .style('text-anchor', 'start') // Align text to the left
+            .attr('x', -180) // Adjust label position to the left with enough space
       )
       .call((g) => g.select('.domain').remove()); // Remove the Y-axis line
 
@@ -112,7 +146,60 @@ export const Heatmap = ({ data }) => {
       .call(d3.axisBottom(x))
       .call((g) => g.selectAll('text').remove()) // Remove X-axis labels
       .call((g) => g.select('.domain').remove()); // Remove X-axis line
-  }, [data]);
+  }, [data, startIndex]);
 
-  return <svg ref={svgRef} width={800} height={500}></svg>; // Adjusted height
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          borderBottom: '1px solid'
+        }}
+      >
+        <div style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-end' }}>
+          {`${data.length} Candidates`}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+          }}
+        >
+          <button
+            onClick={handleLeftClick}
+            disabled={startIndex === 0}
+            style={{
+              border: '1px solid #000',
+              backgroundColor: '#fff',
+              borderRadius: '4px',
+              padding: '5px 10px',
+              marginRight: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            &lt; Prev
+          </button>
+          <button
+            onClick={handleRightClick}
+            disabled={startIndex + numColumns >= data.length}
+            style={{
+              border: '1px solid #000',
+              backgroundColor: '#fff',
+              borderRadius: '4px',
+              padding: '5px 10px',
+              marginLeft: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            Next &gt;
+          </button>
+        </div>
+      </div>
+      <svg ref={svgRef} width={900} height={500}></svg>{' '}
+      {/* Adjusted width and height */}
+    </div>
+  );
 };
